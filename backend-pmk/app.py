@@ -4,6 +4,7 @@ import pandas as pd
 import joblib
 import numpy as np
 import tensorflow as tf
+import os # Tambahkan library os untuk membaca port dari server cloud
 
 app = Flask(__name__)
 CORS(app)
@@ -20,12 +21,9 @@ print("Sistem AI Siap!")
 def predict():
     try:
         # --- 1. MENANGKAP GAMBAR UNTUK CNN ---
-        # Ini akan menerima file foto yang diunggah dari web React
         file_foto = request.files.get('foto')
         if file_foto:
-            # Mencetak nama file ke terminal untuk membuktikan foto berhasil menyeberang ke backend
             print(f"GAMBAR DITERIMA DARI WEB: {file_foto.filename}")
-            # Tempat model_cnn.predict() nantinya...
 
         # --- 2. MENANGKAP DATA GEJALA UNTUK ANN ---
         suhu = request.form.get('suhuTubuh', 38.0, type=float)
@@ -48,7 +46,6 @@ def predict():
             input_data['sores on mouth'] = 1.0
 
         df_input = pd.DataFrame([input_data], columns=kolom_fitur)
-        
         df_input[fitur_numerik] = scaler.transform(df_input[fitur_numerik])
         
         prediksi = model_ann.predict(df_input.values.astype(np.float32))
@@ -68,4 +65,8 @@ def predict():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # --- KODE YANG DIPERBARUI UNTUK CLOUD ---
+    # Mengambil port dari environment Render, atau gunakan 5000 jika di lokal
+    port = int(os.environ.get("PORT", 5000))
+    # host='0.0.0.0' wajib agar server cloud bisa mengekspos API ini ke publik
+    app.run(host="0.0.0.0", port=port)
