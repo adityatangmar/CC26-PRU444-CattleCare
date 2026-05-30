@@ -35,7 +35,7 @@ function Deteksi() {
 
     try {
       // 2. Tembak API Backend Flask 
-      const response = await fetch('http://127.0.0.1:5000/predict', {
+      const response = await fetch('https://storm-audacious-catfish.ngrok-free.dev/predict', {
         method: 'POST',
         body: dataKirim,
       });
