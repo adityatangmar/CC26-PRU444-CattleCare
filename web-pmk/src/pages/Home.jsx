@@ -9,6 +9,9 @@ function Home() {
       <Link to="/deteksi">
         <button style={{ padding: '10px 20px', cursor: 'pointer' }}>Mulai Deteksi</button>
       </Link>
+      <Link to="/riwayat">
+        <button style={{ padding: '10px 20px', cursor: 'pointer', marginLeft: '10px' }}>Riwayat Prediksi</button>
+      </Link>
     </div>
   );
 }

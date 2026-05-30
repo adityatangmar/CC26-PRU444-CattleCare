@@ -4,58 +4,106 @@ import pandas as pd
 import joblib
 import numpy as np
 import tensorflow as tf
-import os # Tambahkan library os untuk membaca port dari server cloud
+import os
+import sqlite3
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
 
+# ============================================================
+# SETUP DATABASE SQLite
+# ============================================================
+def init_db():
+    """Buat tabel riwayat_prediksi kalau belum ada."""
+    conn = sqlite3.connect('cattlecare.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS riwayat_prediksi (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            suhu_tubuh  REAL,
+            nafsu_makan TEXT,
+            pincang     TEXT,
+            luka_mulut  TEXT,
+            hasil       TEXT,
+            confidence  REAL,
+            waktu       TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+    print("Database siap!")
+
+def simpan_ke_db(suhu, nafsu_makan, pincang, luka_mulut, hasil, confidence):
+    """Simpan satu baris hasil prediksi ke database."""
+    conn = sqlite3.connect('cattlecare.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO riwayat_prediksi
+            (suhu_tubuh, nafsu_makan, pincang, luka_mulut, hasil, confidence, waktu)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (suhu, nafsu_makan, pincang, luka_mulut, hasil, confidence,
+          datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+    conn.commit()
+    conn.close()
+
+# ============================================================
+# LOAD MODEL AI
+# ============================================================
 print("Memuat model dan dependencies...")
 kolom_fitur = joblib.load('kolom_fitur_pmk.pkl')
-scaler = joblib.load('scaler_pmk.pkl')
-model_ann = tf.keras.models.load_model('model_pmk_ann.h5')
-
-fitur_numerik = scaler.feature_names_in_ 
+scaler      = joblib.load('scaler_pmk.pkl')
+model_ann   = tf.keras.models.load_model('model_pmk_ann.h5')
+fitur_numerik = scaler.feature_names_in_
 print("Sistem AI Siap!")
 
+# Inisialisasi database saat server pertama kali nyala
+init_db()
+
+# ============================================================
+# ENDPOINT 1 — POST /predict  (prediksi + simpan ke DB)
+# ============================================================
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
-        # --- 1. MENANGKAP GAMBAR UNTUK CNN ---
+        # Tangkap foto (untuk CNN nanti)
         file_foto = request.files.get('foto')
         if file_foto:
-            print(f"GAMBAR DITERIMA DARI WEB: {file_foto.filename}")
+            print(f"GAMBAR DITERIMA: {file_foto.filename}")
 
-        # --- 2. MENANGKAP DATA GEJALA UNTUK ANN ---
-        suhu = request.form.get('suhuTubuh', 38.0, type=float)
-        nafsu_makan = request.form.get('nafsuMakan', 'Normal')
-        pincang = request.form.get('pincang', 'Tidak')
-        luka_mulut = request.form.get('lukaMulut', 'Tidak')
+        # Tangkap data gejala
+        suhu        = request.form.get('suhuTubuh',   38.0,     type=float)
+        nafsu_makan = request.form.get('nafsuMakan',  'Normal')
+        pincang     = request.form.get('pincang',     'Tidak')
+        luka_mulut  = request.form.get('lukaMulut',   'Tidak')
 
+        # Bangun input untuk model ANN
         input_data = {fitur: 0.0 for fitur in kolom_fitur}
-        
-        input_data['Age'] = 24.0 
+        input_data['Age']         = 24.0
         input_data['Temperature'] = suhu
-        
+
         if nafsu_makan == 'Menurun':
             input_data['loss of appetite'] = 1.0
         if pincang == 'Ya':
-            input_data['lameness'] = 1.0
+            input_data['lameness']          = 1.0
             input_data['difficulty walking'] = 1.0
         if luka_mulut == 'Ya':
             input_data['blisters on mouth'] = 1.0
-            input_data['sores on mouth'] = 1.0
+            input_data['sores on mouth']    = 1.0
 
         df_input = pd.DataFrame([input_data], columns=kolom_fitur)
         df_input[fitur_numerik] = scaler.transform(df_input[fitur_numerik])
-        
-        prediksi = model_ann.predict(df_input.values.astype(np.float32))
+
+        prediksi         = model_ann.predict(df_input.values.astype(np.float32))
         confidence_score = float(prediksi[0][0])
-        
-        status = "Positif" if confidence_score > 0.5 else "Negatif"
-        
+        status           = "Positif" if confidence_score > 0.5 else "Negatif"
+
+        # ✅ SIMPAN KE DATABASE
+        simpan_ke_db(suhu, nafsu_makan, pincang, luka_mulut, status, round(confidence_score * 100, 2))
+
         return jsonify({
-            "status": "success",
-            "hasil_diagnosis": status,
+            "status":               "success",
+            "hasil_diagnosis":      status,
             "confidence_score_ann": round(confidence_score * 100, 2)
         })
 
@@ -64,9 +112,32 @@ def predict():
         traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)}), 500
 
+
+# ============================================================
+# ENDPOINT 2 — GET /riwayat  (ambil semua riwayat prediksi)
+# ============================================================
+@app.route('/riwayat', methods=['GET'])
+def riwayat():
+    try:
+        conn   = sqlite3.connect('cattlecare.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM riwayat_prediksi ORDER BY id DESC')
+        rows   = cursor.fetchall()
+        conn.close()
+
+        kolom = ['id', 'suhu_tubuh', 'nafsu_makan', 'pincang',
+                 'luka_mulut', 'hasil', 'confidence', 'waktu']
+
+        data = [dict(zip(kolom, row)) for row in rows]
+        return jsonify({"status": "success", "data": data})
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ============================================================
+# JALANKAN SERVER
+# ============================================================
 if __name__ == '__main__':
-    # --- KODE YANG DIPERBARUI UNTUK CLOUD ---
-    # Mengambil port dari environment Render, atau gunakan 5000 jika di lokal
     port = int(os.environ.get("PORT", 5000))
-    # host='0.0.0.0' wajib agar server cloud bisa mengekspos API ini ke publik
     app.run(host="0.0.0.0", port=port)
