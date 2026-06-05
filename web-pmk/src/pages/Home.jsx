@@ -126,13 +126,14 @@ function Home() {
       {/* MAIN — full width two-column layout */}
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 32px 60px' }}>
 
-        {/* TOP SECTION: hero + sidebar */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20, alignItems: 'stretch', paddingTop: 24 }}>
+        {/* MAIN GRID: 4-column, hero spans 3 cols, sidebar spans 1 col */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 340px', gap: 20, alignItems: 'start', paddingTop: 24 }}>
 
-          {/* LEFT: HERO */}
+          {/* LEFT: HERO — spans first 3 columns */}
           <div style={{
-            background: '#1B4332', borderRadius: 20, padding: '48px 44px',
+            background: '#1B4332', borderRadius: 20, padding: '40px 44px',
             position: 'relative', overflow: 'hidden',
+            gridColumn: '1 / 4',
           }}>
             <div style={{ position: 'absolute', top: -70, right: -70, width: 260, height: 260, background: 'rgba(255,255,255,0.035)', borderRadius: '50%', pointerEvents: 'none' }} />
             <div style={{ position: 'absolute', bottom: -50, left: 30, width: 180, height: 180, background: 'rgba(74,222,128,0.06)', borderRadius: '50%', pointerEvents: 'none' }} />
@@ -184,8 +185,8 @@ function Home() {
             </div>
           </div>
 
-          {/* RIGHT: GEJALA PMK SIDEBAR */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* RIGHT: GEJALA PMK SIDEBAR — 4th column, spans 2 rows */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, gridColumn: '4', gridRow: '1 / 3' }}>
             {/* Gejala card */}
             <div style={{
               background: '#fff', border: '1px solid rgba(0,0,0,0.06)',
@@ -237,13 +238,23 @@ function Home() {
               ))}
             </div>
 
+            {/* Disclaimer */}
+            <div style={{
+              background: '#FFFBEB', border: '1px solid #FDE68A',
+              borderRadius: 12, padding: '14px 18px',
+              display: 'flex', gap: 10, alignItems: 'flex-start',
+            }}>
+              <div style={{ color: '#D97706', flexShrink: 0, marginTop: 1 }}><IconWarning /></div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#92400E', marginBottom: 3 }}>Disclaimer</div>
+                <div style={{ fontSize: 12, color: '#78350F', lineHeight: 1.6 }}>
+                  Hasil diagnosis bersifat pendukung keputusan. Tetap konsultasikan ke dokter hewan untuk penanganan lebih lanjut.
+                </div>
+              </div>
+            </div>
+
           </div>
-        </div>
-
-        {/* BOTTOM SECTION: feature cards + disclaimer */}
-        <div style={{ marginTop: 20, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 340px', gap: 12, alignItems: 'start' }}>
-
-          {/* Feature cards */}
+          {/* Feature cards — row 2, columns 1-3 */}
           {features.map(f => (
             <div key={f.title} style={{
               background: '#fff', border: '1px solid rgba(0,0,0,0.06)',
@@ -260,20 +271,6 @@ function Home() {
             </div>
           ))}
 
-          {/* Disclaimer — fills the 4th column aligned to sidebar */}
-          <div style={{
-            background: '#FFFBEB', border: '1px solid #FDE68A',
-            borderRadius: 12, padding: '14px 18px',
-            display: 'flex', gap: 10, alignItems: 'flex-start',
-          }}>
-            <div style={{ color: '#D97706', flexShrink: 0, marginTop: 1 }}><IconWarning /></div>
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#92400E', marginBottom: 3 }}>Disclaimer</div>
-              <div style={{ fontSize: 12, color: '#78350F', lineHeight: 1.6 }}>
-                Hasil diagnosis bersifat pendukung keputusan. Tetap konsultasikan ke dokter hewan untuk penanganan lebih lanjut.
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
